@@ -1,0 +1,10 @@
+{
+  "description": "Enables seamless navigation from the Home screen to the Main Menu via a start button, enhancing user experience with intuitive interface flow.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
