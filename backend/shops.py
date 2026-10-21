@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import math
 from typing import Optional, Sequence
+
+from categories_ja import ja_title
 
 
 def unsplash(photo_id: str, width: int = 800) -> str:
@@ -54,25 +57,89 @@ _SEEDS = [
      "description": "江戸前の伝統を守る名店。おまかせコースのみ、要予約。"},
 ]
 
-SHOPS = [{**s, "image": GENRE_PHOTO[s["genre"]]} for s in _SEEDS]
+# モック店舗の位置（エリアの中心付近）。現在地検索の距離計算に使う
+_AREA_COORDS = {
+    "渋谷": (35.6595, 139.7005),
+    "表参道": (35.6652, 139.7123),
+    "恵比寿": (35.6467, 139.7101),
+    "中目黒": (35.6440, 139.6990),
+    "六本木": (35.6628, 139.7314),
+    "新宿": (35.6909, 139.7003),
+    "池袋": (35.7295, 139.7109),
+    "銀座": (35.6717, 139.7650),
+}
+
+# モックのジャンル → Yelp のカテゴリ（alias, title）。Yelp の結果と同じく title は日本語表記
+_GENRE_CATEGORY = {
+    genre: (alias, ja_title(alias, genre))
+    for genre, alias in {
+        "寿司": "sushi",
+        "ラーメン": "ramen",
+        "イタリアン": "italian",
+        "カフェ": "cafes",
+        "居酒屋": "izakaya",
+        "焼肉": "yakiniku",
+        "ポケ": "poke",
+    }.items()
+}
+
+
+def _jitter(i: int) -> float:
+    """同じエリアの店が地図上で重ならないよう、id から決まる小さなずれ（±約500m）"""
+    return ((i * 37) % 11 - 5) * 0.001
+
+
+SHOPS = [
+    {
+        **s,
+        "id": str(s["id"]),
+        "prefecture": "東京都",
+        "genre": _GENRE_CATEGORY[s["genre"]][1],
+        "categories": [dict(zip(("alias", "title"), _GENRE_CATEGORY[s["genre"]]))],
+        "lat": _AREA_COORDS[s["area"]][0] + _jitter(s["id"]),
+        "lng": _AREA_COORDS[s["area"]][1] + _jitter(s["id"] * 3),
+        "image": GENRE_PHOTO[s["genre"]],
+    }
+    for s in _SEEDS
+]
+
+
+def distance_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    """2 点間の距離（m、ハーバーサイン）"""
+    r = 6_371_000
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = p2 - p1, math.radians(lng2 - lng1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(a))
+
+
+def with_distance(shops: Sequence[dict], lat: float, lng: float) -> list[dict]:
+    return [{**s, "distance": distance_m(lat, lng, s["lat"], s["lng"])} for s in shops]
 
 
 def filter_shops(
     shops: Sequence[dict],
+    prefecture: Optional[str] = None,
     area: Optional[str] = None,
-    genres: Optional[Sequence[str]] = None,
+    genres: Optional[Sequence[str]] = None,  # Yelp のカテゴリ alias。いずれかを含めば一致
     min_rating: float = 0.0,
+    max_rating: float = 5.0,
     budget_min: Optional[int] = None,
     budget_max: Optional[int] = None,
+    max_distance: Optional[float] = None,
 ) -> list[dict]:
     """クエリ条件に合致する店舗だけを返す。未指定（None / 空）の条件は無視する。"""
     result = []
     for shop in shops:
+        if prefecture and shop["prefecture"] != prefecture:
+            continue
         if area and shop["area"] != area:
             continue
-        if genres and shop["genre"] not in genres:
+        if genres and not any(c["alias"] in genres for c in shop["categories"]):
             continue
-        if shop["rating"] < min_rating:
+        if not (min_rating <= shop["rating"] <= max_rating):
+            continue
+        if max_distance is not None and (shop.get("distance") or 0) > max_distance:
             continue
         if budget_min is not None and shop["budget"] < budget_min:
             continue
@@ -80,3 +147,13 @@ def filter_shops(
             continue
         result.append(shop)
     return result
+
+
+def genre_facets(shops: Sequence[dict]) -> list[dict]:
+    """店舗のカテゴリを集計し、件数の多い順に [{alias, title, count}] を返す（ジャンルの選択肢用）"""
+    facets: dict[str, dict] = {}
+    for shop in shops:
+        for c in shop["categories"]:
+            f = facets.setdefault(c["alias"], {"alias": c["alias"], "title": c["title"], "count": 0})
+            f["count"] += 1
+    return sorted(facets.values(), key=lambda f: (-f["count"], f["title"]))

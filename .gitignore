@@ -4,6 +4,8 @@ build/
 .cache/
 .env*
 .vite/
+.venv/
+__pycache__/
 vite.config.*.timestamp-*
 *.tsbuildinfo
 *-debug.log*

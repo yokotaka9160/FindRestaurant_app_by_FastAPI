@@ -60,6 +60,17 @@
   button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
 }
 
+/* ---- 地図（Leaflet）のマーカー。SVG の属性ではテーマ変数が使えないので CSS で塗る ---- */
+.map-shop-marker { fill: var(--primary); stroke: #ffffff; }
+.map-shop-marker--active { fill: #f59e0b; }
+.map-me-marker { fill: #2563eb; stroke: #ffffff; }
+.map-me-range { fill: #2563eb; stroke: #2563eb; }
+.map-route { stroke: var(--primary); fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.map-route-casing { stroke: #ffffff; fill: none; stroke-opacity: .9; stroke-linecap: round; stroke-linejoin: round; }
+.map-origin-marker { fill: #059669; stroke: #ffffff; }
+.map-destination-marker { fill: #e11d48; stroke: #ffffff; }
+.leaflet-container { font: inherit; }
+
 /* ---- ホーム画面（既存デザイン） ---- */
 .primary-button {
   min-height: 42px;
