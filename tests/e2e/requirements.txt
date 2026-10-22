@@ -1,0 +1,4 @@
+# playwright は Docker イメージ（mcr.microsoft.com/playwright/python:v1.49.0-noble）のブラウザと版をそろえる
+playwright==1.49.0
+pytest==8.3.4
+pytest-playwright==0.6.2

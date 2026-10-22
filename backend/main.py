@@ -20,6 +20,7 @@ from typing import Literal, Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 import routing
@@ -93,6 +94,12 @@ class GeocodeResult(BaseModel):
     name: str
     lat: float
     lng: float
+
+
+@app.get("/", include_in_schema=False)
+def root() -> RedirectResponse:
+    # API サーバーのトップには画面がないので、API ドキュメントへ案内する（アプリの画面はフロント側）
+    return RedirectResponse("/docs")
 
 
 @app.get("/api/health")

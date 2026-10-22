@@ -6,6 +6,8 @@ build/
 .vite/
 .venv/
 __pycache__/
+.pytest_cache/
+test-results/
 vite.config.*.timestamp-*
 *.tsbuildinfo
 *-debug.log*

@@ -1,0 +1,16 @@
+# フロントエンドの E2E テスト（pytest + Playwright）：
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml run --rm --build e2e
+# API はテスト側で差し替えるので、Yelp / OSRM / Nominatim には接続しない
+services:
+  e2e:
+    build: ./tests/e2e
+    # frontend コンテナとネットワークを共有し、http://localhost で開く
+    # （位置情報 API は https か localhost の「安全なオリジン」でしか使えないため）
+    network_mode: "service:frontend"
+    environment:
+      FRONTEND_URL: http://localhost
+    volumes:
+      - ./tests/e2e:/tests   # テストコードの変更をそのまま反映
+    depends_on:
+      - frontend
+    profiles: ["e2e"]   # `docker compose up` では起動しない

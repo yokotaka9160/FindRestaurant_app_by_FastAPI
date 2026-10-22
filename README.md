@@ -116,9 +116,11 @@ flowchart LR
 │   ├── routing.py                # OSRM・Nominatim・ルートからの距離計算
 │   ├── shops.py                  # 絞り込み・ジャンル集計・サンプルデータ
 │   └── categories_ja.py          # Yelp カテゴリの日本語名
+├── tests/e2e/                    # フロントエンドの E2E テスト（pytest + Playwright）
 ├── Dockerfile                    # フロントエンド（dev / build / prod）
 ├── docker-compose.yml            # 本番相当
-└── docker-compose.dev.yml        # 開発用（ホットリロード）
+├── docker-compose.dev.yml        # 開発用（ホットリロード）
+└── docker-compose.e2e.yml        # E2E テスト用
 ```
 
 ## 設定
@@ -167,7 +169,40 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 pnpm install && pnpm dev
 ```
 
-動作確認:
+## テスト（フロントエンド E2E）
+
+`tests/e2e/` に pytest + [Playwright](https://playwright.dev/python/) の E2E テストがあります。
+実際のブラウザ（Chromium）で画面を操作し、フロントが API に送る検索条件と、結果の表示を確かめます。
+API の応答はテスト内で固定の JSON に差し替えるため、Yelp・OSRM・Nominatim には接続しません（API キーも不要）。
+
+| ファイル | 対象 |
+| --- | --- |
+| `test_home.py` | ホーム画面 ↔ 検索画面 |
+| `test_area_search.py` | 都道府県・市区町村、現在地周辺（半径の変更・解除・位置情報の拒否） |
+| `test_filters.py` | ジャンル（複数選択・もっと見る）、予算、評価、リセット |
+| `test_results.py` | カード表示、並び替え、マップ表示、該当なし、API エラーと再読み込み |
+| `test_route_search.py` | 地名検索、現在地を出発地に、入れ替え、ルートからの距離、ルート順、ルートが見つからない場合 |
+
+```bash
+# Docker で実行（ブラウザ入りのイメージを使うので、ローカルへのインストール不要）
+docker compose -f docker-compose.yml -f docker-compose.e2e.yml run --rm --build e2e
+
+# 一部だけ実行
+docker compose -f docker-compose.yml -f docker-compose.e2e.yml run --rm e2e pytest test_route_search.py
+```
+
+ローカルで実行する場合（フロントを http://localhost:8080 などで起動しておく）：
+
+```bash
+cd tests/e2e
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/playwright install --with-deps chromium
+FRONTEND_URL=http://localhost:8080 .venv/bin/pytest
+```
+
+位置情報のテストがあるため、`FRONTEND_URL` は `localhost` か `https` の URL にしてください。
+
+## 動作確認
 
 ```bash
 curl "http://localhost:8000/api/shops?prefecture=東京都&area=新宿&min_rating=4"
